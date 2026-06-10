@@ -1,0 +1,17 @@
+# Dépendances (Ne jamais uploader, trop lourd)
+node_modules/
+
+# Dossiers de build / compilation (Générés automatiquement)
+dist/
+dist-electron/
+
+# Fichiers de logs et systèmes
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Fichiers de configuration locale / secrets (si vous en ajoutez plus tard)
+.env
+.env.local

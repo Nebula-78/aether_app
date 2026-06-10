@@ -1,0 +1,21 @@
+appId: sh.ohm.aether
+productName: Aether
+copyright: "@rokh / ohm.sh"
+directories:
+  output: dist-electron
+files:
+  - dist/**
+  - electron/**
+  - package.json
+win:
+  target: nsis
+  icon: public/icon.ico
+linux:
+  target: AppImage
+  icon: public/icon.png
+mac:
+  target: dmg
+  icon: public/icon.icns
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
