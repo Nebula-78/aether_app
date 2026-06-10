@@ -11,9 +11,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveConfig:    (profile) => ipcRenderer.invoke('config:save', profile),
   loadConfig:    () => ipcRenderer.invoke('config:load'),
   testConfig:    (config) => ipcRenderer.invoke('config:test', config),
+  listProfiles:  () => ipcRenderer.invoke('config:list'),
+  deleteProfile: (id) => ipcRenderer.invoke('config:delete', id),
+  switchProfile: (id) => ipcRenderer.invoke('config:switch', id),
 
   // Chat & Stream (F2)
   sendMessage:   (data) => ipcRenderer.send('agent:send', data),
+  abortStream:   () => ipcRenderer.send('agent:abort'),
   onStreamChunk: (cb) => {
     const wrapped = (_event, ...args) => cb(...args);
     ipcRenderer.on('agent:stream-chunk', wrapped);
@@ -69,6 +73,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveConversation: (conv) => ipcRenderer.send('conversation:save', conv),
   listConversations: () => ipcRenderer.invoke('conversation:list'),
   deleteConversation: (id) => ipcRenderer.send('conversation:delete', id),
+  deleteConversationConfirm: (title) => ipcRenderer.invoke('conversation:delete-confirm', title),
   generateTitle: (messages) => ipcRenderer.invoke('conversation:generate-title', messages),
   searchFullText: (query) => ipcRenderer.invoke('conversation:search-full-text', query),
   exportConversation: (data) => ipcRenderer.invoke('conversation:export', data),

@@ -10,9 +10,11 @@ import {
   UserCircle,
   Code as CodeIcon,
   PenTool,
-  BarChartHorizontal
+  BarChartHorizontal,
+  Settings
 } from 'lucide-react';
 import SidebarItem from './SidebarItem';
+import ProfileMenu from './ProfileMenu';
 
 const PERSONAS = [
   { id: 'default', name: 'Aether', icon: <UserCircle size={14} /> },
@@ -21,8 +23,9 @@ const PERSONAS = [
   { id: 'analyst', name: 'Analyste', icon: <BarChartHorizontal size={14} /> },
 ];
 
-const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename, userProfile, onToggle, activePersona, onPersonaChange }) => {
+const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename, userProfile, onToggle, activePersona, onPersonaChange, onOpenSettings }) => {
   const [showSearch, setShowSearch] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const searchInputRef = useRef(null);
@@ -71,6 +74,14 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
       <div className="h-[52px] flex items-center justify-between px-4">
         <span className="font-body text-lg font-medium text-txt-primary tracking-tight">Aether</span>
         <div className="flex items-center gap-1 text-txt-secondary">
+          <button 
+            onClick={onOpenSettings}
+            aria-label="Ouvrir les paramètres"
+            className="p-1.5 hover:bg-item-hover rounded-md transition-colors cursor-pointer"
+            title="Paramètres"
+          >
+            <Settings size={18} />
+          </button>
           <button 
             onClick={() => setShowSearch(prev => !prev)}
             aria-label="Rechercher une discussion"
@@ -166,7 +177,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete(conv.id);
+                      onDelete(conv.id, conv.title);
                     }}
                     aria-label={`Supprimer la discussion ${conv.title}`}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-txt-secondary hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-sidebar-bg/80 backdrop-blur-sm rounded-md"
@@ -187,7 +198,18 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
 
       {/* Footer */}
       <div className="border-t border-border-subtle p-3">
-        <div className="flex items-center gap-3 p-2 hover:bg-item-hover rounded-md cursor-pointer transition-colors group">
+        {showProfileMenu && (
+          <ProfileMenu 
+            activeProfileId={userProfile?.id}
+            onSwitch={() => setShowProfileMenu(false)}
+            onClose={() => setShowProfileMenu(false)}
+            onAdd={() => { /* Implement later: navigate to OnboardingScreen */ }}
+          />
+        )}
+        <div 
+          onClick={() => setShowProfileMenu(!showProfileMenu)}
+          className="flex items-center gap-3 p-2 hover:bg-item-hover rounded-md cursor-pointer transition-colors group"
+        >
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-[13px] font-medium uppercase">
             {userProfile?.name?.slice(0, 2) || 'IA'}
           </div>
@@ -196,7 +218,6 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
             <div className="text-[11px] text-txt-secondary">{userProfile?.model || 'Modèle actif'}</div>
           </div>
           <div className="flex items-center gap-1 text-txt-secondary opacity-0 group-hover:opacity-100 transition-opacity">
-            <Download size={14} />
             <ChevronDown size={14} />
           </div>
         </div>

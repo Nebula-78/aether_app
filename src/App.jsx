@@ -5,6 +5,7 @@ import MainArea from './components/MainArea';
 import ArtifactsPanel from './components/ArtifactsPanel';
 import OnboardingScreen from './components/OnboardingScreen';
 import ConfirmModal from './components/ConfirmModal';
+import SettingsModal from './components/SettingsModal';
 
 function App() {
   const [config, setConfig] = useState(null);
@@ -12,10 +13,12 @@ function App() {
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [systemPrompt, setSystemPrompt] = useState('');
   const [confirmData, setConfirmData] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [activeArtifact, setActiveArtifact] = useState(null);
   const [activePersona, setActivePersona] = useState('default');
+  const [showSettings, setShowSettings] = useState(false);
 
   // Écouter les demandes de confirmation de tools
   useEffect(() => {
@@ -24,6 +27,8 @@ function App() {
     };
     
     window.electronAPI?.onToolConfirm(handleConfirmRequest);
+    window.electronAPI?.onShortcut('shortcut:new-conversation', startNewConversation);
+
     return () => {
       window.electronAPI?.offToolConfirm(handleConfirmRequest);
     };
@@ -58,16 +63,21 @@ function App() {
   const startNewConversation = useCallback(() => {
     setActiveConvId(Date.now());
     setMessages([]);
+    setSystemPrompt('');
   }, []);
 
   // Sélectionner une conversation
   const selectConversation = useCallback((conv) => {
     setActiveConvId(conv.id);
     setMessages(conv.messages || []);
+    setSystemPrompt(conv.systemPrompt || '');
   }, []);
 
   // Supprimer une conversation
-  const deleteConversation = useCallback(async (id) => {
+  const deleteConversation = useCallback(async (id, title) => {
+    const confirmed = await window.electronAPI.deleteConversationConfirm(title);
+    if (!confirmed) return;
+
     await window.electronAPI.deleteConversation(id);
     if (activeConvId === id) {
       startNewConversation();
@@ -119,6 +129,7 @@ function App() {
               onToggle={() => setShowSidebar(false)}
               activePersona={activePersona}
               onPersonaChange={setActivePersona}
+              onOpenSettings={() => setShowSettings(true)}
             />
           </div>
         </div>
@@ -128,6 +139,8 @@ function App() {
           setActiveConvId={setActiveConvId}
           messages={messages}
           setMessages={setMessages}
+          systemPrompt={systemPrompt}
+          setSystemPrompt={setSystemPrompt}
           onConversationUpdated={refreshConversations}
           startNewConversation={startNewConversation}
           showSidebar={showSidebar}
@@ -154,6 +167,10 @@ function App() {
           data={confirmData} 
           onConfirm={(confirmed) => handleConfirmResponse(confirmData.id, confirmed)} 
         />
+      )}
+
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

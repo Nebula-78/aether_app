@@ -1,12 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400&family=DM+Sans:wght@300;400;500&family=Fira+Code:wght@400;500&display=swap');
+@import "@fontsource/geist/300.css";
+@import "@fontsource/geist/400.css";
+@import "@fontsource/geist/500.css";
 
 @import "tailwindcss";
 
 @theme {
   /* Fonts */
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-body: "DM Sans", sans-serif;
-  --font-mono: "Fira Code", monospace;
+  --font-display: "Geist", sans-serif;
+  --font-body: "Geist", sans-serif;
+  --font-mono: "Geist Mono", monospace;
 
   /* Colors */
   --color-sidebar-bg: #1a1a1a;
@@ -50,6 +52,7 @@
     font-family: var(--font-body);
     overflow: hidden;
     user-select: none;
+    border-radius: var(--radius-xl);
   }
 
   input, textarea, [contenteditable="true"], .select-text {
