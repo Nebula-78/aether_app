@@ -1,6 +1,6 @@
-# AETHER_AMELIORATIONS.md
+# ARIA_AMELIORATIONS.md
 ## Analyse du projet + Propositions d'améliorations
-> Analyse du code source — aether_app v1.0
+> Analyse du code source — aria_app v1.0
 > @rokh / ohm.sh — VIAP v1.1
 
 ---
@@ -277,7 +277,7 @@ s'assurer que `setStreaming(false)` est toujours appelé dans le finally.
 ### T4 — Variables d'environnement pour la config de build ⭐
 **Proposition** : Créer `.env.example` avec :
 ```
-VITE_APP_NAME=Aether
+VITE_APP_NAME=ARIA
 VITE_DEFAULT_BASE_URL=https://api.openai.com/v1
 VITE_DEFAULT_MODEL=gpt-4o
 ```
@@ -306,7 +306,7 @@ sa propre conversation. Chaque fenêtre partage le même store.
 
 ### F9 — Plugins tools custom ⭐
 L'utilisateur ajoute ses propres tools via un fichier
-`~/.config/aether/tools/mon-tool.js` chargé dynamiquement.
+`~/.config/aria/tools/mon-tool.js` chargé dynamiquement.
 
 ### F10 — Auto-update ⭐
 `electron-updater` + GitHub Releases pour les mises à jour
@@ -333,4 +333,4 @@ automatiques sans réinstallation manuelle.
 
 ---
 
-*@rokh / ohm.sh — AETHER_AMELIORATIONS.md — VIAP v1.1*
+*@rokh / ohm.sh — ARIA_AMELIORATIONS.md — VIAP v1.1*

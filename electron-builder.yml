@@ -1,5 +1,5 @@
-appId: sh.ohm.aether
-productName: Aether
+appId: sh.ohm.aria
+productName: ARIA
 copyright: "@rokh / ohm.sh"
 directories:
   output: dist-electron

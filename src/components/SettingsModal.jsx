@@ -6,9 +6,17 @@ const SettingsModal = ({ onClose }) => {
   const [profiles, setProfiles] = useState({});
   const [fontScale, setFontScale] = useState(1);
   const [systemPrompt, setSystemPrompt] = useState(''); 
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newProfile, setNewProfile] = useState({
+    name: '',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: '',
+    model: 'gpt-4o'
+  });
+  const [testStatus, setTestStatus] = useState('idle'); // idle, testing, success, error
 
   useEffect(() => {
-    window.electronAPI.listProfiles().then(setProfiles);
+    refreshProfiles();
     window.electronAPI.loadConfig().then(config => {
       if (config && config.defaultSystemPrompt) {
         setSystemPrompt(config.defaultSystemPrompt);
@@ -16,11 +24,33 @@ const SettingsModal = ({ onClose }) => {
     });
   }, []);
 
+  const refreshProfiles = () => {
+    window.electronAPI.listProfiles().then(setProfiles);
+  };
+
   const handleDelete = async (id) => {
-    await window.electronAPI.deleteProfile(id);
-    const newProfiles = { ...profiles };
-    delete newProfiles[id];
-    setProfiles(newProfiles);
+    if (confirm("Supprimer ce profil ?")) {
+      await window.electronAPI.deleteProfile(id);
+      refreshProfiles();
+    }
+  };
+
+  const handleTestProfile = async () => {
+    if (!newProfile.apiKey || !newProfile.baseUrl) return;
+    setTestStatus('testing');
+    const result = await window.electronAPI.testConfig(newProfile);
+    setTestStatus(result.success ? 'success' : 'error');
+  };
+
+  const handleSaveProfile = async () => {
+    const profile = { ...newProfile, id: Date.now().toString() };
+    const result = await window.electronAPI.saveConfig(profile);
+    if (result.success) {
+      setShowAddForm(false);
+      setNewProfile({ name: '', baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o' });
+      setTestStatus('idle');
+      refreshProfiles();
+    }
   };
 
   const handleSaveApparence = (scale) => {
@@ -41,15 +71,15 @@ const SettingsModal = ({ onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className="bg-main-bg border border-border-subtle rounded-2xl shadow-2xl w-full max-w-2xl h-[500px] flex overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-[fadeSlideIn_0.2s_ease_both]">
+      <div className="bg-main-bg border border-border-subtle rounded-2xl shadow-2xl w-full max-w-2xl h-[550px] flex overflow-hidden">
         {/* Sidebar */}
         <div className="w-48 bg-sidebar-bg border-r border-border-subtle p-4 flex flex-col gap-2">
           <h2 className="text-lg font-medium text-txt-primary mb-4 px-2">Paramètres</h2>
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setShowAddForm(false); }}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors ${
                 activeTab === tab.id ? 'bg-item-active text-txt-primary' : 'text-txt-secondary hover:bg-item-hover'
               }`}
@@ -61,7 +91,7 @@ const SettingsModal = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-6 overflow-y-auto flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-medium text-txt-primary">
               {tabs.find(t => t.id === activeTab).label}
@@ -71,21 +101,68 @@ const SettingsModal = ({ onClose }) => {
             </button>
           </div>
           
-          <div className="text-txt-secondary text-sm">
+          <div className="text-txt-secondary text-sm flex-1">
             {activeTab === 'profils' && (
               <div className="space-y-4">
-                {Object.entries(profiles).map(([id, profile]) => (
-                  <div key={id} className="flex items-center gap-3 p-3 bg-sidebar-bg rounded-lg border border-border-subtle">
-                    <UserCircle size={20} />
-                    <div className="flex-1">
-                      <div className="text-txt-primary font-medium">{profile.name}</div>
-                      <div className="text-xs">{profile.model}</div>
+                {!showAddForm ? (
+                  <>
+                    <div className="space-y-2">
+                      {Object.entries(profiles).map(([id, profile]) => (
+                        <div key={id} className="flex items-center gap-3 p-3 bg-sidebar-bg rounded-lg border border-border-subtle group">
+                          <UserCircle size={20} className="text-txt-secondary" />
+                          <div className="flex-1">
+                            <div className="text-txt-primary font-medium">{profile.name}</div>
+                            <div className="text-xs opacity-60">{profile.model}</div>
+                          </div>
+                          <button onClick={() => handleDelete(id)} className="p-1.5 text-txt-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={() => handleDelete(id)} className="p-1 hover:text-red-400">
-                      <Trash2 size={16} />
+                    <button 
+                      onClick={() => setShowAddForm(true)}
+                      className="w-full flex items-center justify-center gap-2 p-3 border border-dashed border-border-subtle rounded-lg hover:border-accent hover:text-accent transition-all text-xs font-medium"
+                    >
+                      <Plus size={14} /> Ajouter un profil
                     </button>
+                  </>
+                ) : (
+                  <div className="space-y-3 p-4 bg-sidebar-bg rounded-xl border border-border-subtle animate-[fadeSlideIn_0.2s_ease_both]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-txt-primary uppercase tracking-wider">Nouveau Profil</span>
+                      <button onClick={() => setShowAddForm(false)} className="text-txt-secondary hover:text-txt-primary"><X size={14} /></button>
+                    </div>
+                    <input type="text" placeholder="Nom du profil (ex: OpenAI Perso)" value={newProfile.name} onChange={e => setNewProfile({...newProfile, name: e.target.value})} className="w-full bg-input-bg border border-border-input rounded-lg px-3 py-2 text-sm text-txt-primary outline-none focus:border-accent" />
+                    <input type="text" placeholder="Base URL" value={newProfile.baseUrl} onChange={e => setNewProfile({...newProfile, baseUrl: e.target.value})} className="w-full bg-input-bg border border-border-input rounded-lg px-3 py-2 text-sm text-txt-primary outline-none focus:border-accent" />
+                    <input type="password" placeholder="Clé API" value={newProfile.apiKey} onChange={e => setNewProfile({...newProfile, apiKey: e.target.value})} className="w-full bg-input-bg border border-border-input rounded-lg px-3 py-2 text-sm text-txt-primary outline-none focus:border-accent" />
+                    <input type="text" placeholder="Modèle par défaut" value={newProfile.model} onChange={e => setNewProfile({...newProfile, model: e.target.value})} className="w-full bg-input-bg border border-border-input rounded-lg px-3 py-2 text-sm text-txt-primary outline-none focus:border-accent" />
+                    
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        onClick={handleTestProfile} 
+                        disabled={testStatus === 'testing' || !newProfile.apiKey}
+                        className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg text-xs font-medium transition-all ${
+                          testStatus === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
+                          testStatus === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 
+                          'bg-item-hover text-txt-primary hover:bg-accent hover:text-white'
+                        }`}
+                      >
+                        {testStatus === 'testing' ? <Loader2 size={14} className="animate-spin" /> : 
+                         testStatus === 'success' ? <Check size={14} /> : 
+                         testStatus === 'error' ? <X size={14} /> : null}
+                        {testStatus === 'testing' ? 'Test...' : 'Tester la connexion'}
+                      </button>
+                      <button 
+                        onClick={handleSaveProfile}
+                        disabled={testStatus !== 'success'}
+                        className="flex-1 p-2 bg-accent text-white rounded-lg text-xs font-medium disabled:opacity-30 disabled:grayscale transition-all"
+                      >
+                        Sauvegarder
+                      </button>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
             

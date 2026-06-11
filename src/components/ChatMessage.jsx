@@ -215,45 +215,40 @@ const ChatMessage = ({ role, content, isError, isStreaming, setActiveArtifact, o
 
   const renderContent = () => {
     if (isEditing) {
-      return (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full bg-input-bg border border-border-input rounded-lg p-2 text-sm text-txt-primary outline-none focus:border-accent resize-none"
-            rows={3}
-          />
-          <div className="flex gap-2 justify-end">
-            <button onClick={handleCancel} className="px-3 py-1 text-xs text-txt-secondary hover:text-txt-primary">Annuler</button>
-            <button onClick={handleEdit} className="px-3 py-1 text-xs bg-accent text-white rounded-md">Enregistrer</button>
-          </div>
-        </div>
-      );
+      // ... (code existant)
     }
+
+    // Garde-fou robuste
+    if (!content) return null;
 
     if (typeof content === 'string') {
       return <MarkdownRenderer text={content} />;
     }
 
-    return (
-      <div className="flex flex-col gap-2">
-        {content.map((item, index) => {
-          if (item.type === 'text') {
-            return <MarkdownRenderer key={index} text={item.text} />;
-          } else if (item.type === 'image_url') {
-            return (
-              <img
-                key={index}
-                src={item.image_url.url}
-                alt="Attachment"
-                className="max-w-full rounded-lg my-2 border border-border-subtle"
-              />
-            );
-          }
-          return null;
-        })}
-      </div>
-    );
+    if (Array.isArray(content)) {
+      return (
+        <div className="flex flex-col gap-2">
+          {content.map((item, index) => {
+            if (item.type === 'text') {
+              return <MarkdownRenderer key={index} text={item.text} />;
+            } else if (item.type === 'image_url') {
+              return (
+                <img
+                  key={index}
+                  src={item.image_url.url}
+                  alt="Attachment"
+                  className="max-w-full rounded-lg my-2 border border-border-subtle"
+                />
+              );
+            }
+            return null;
+          })}
+        </div>
+      );
+    }
+    
+    // Si c'est un objet inconnu, essayer de le convertir en string
+    return <MarkdownRenderer text={String(content)} />;
   };
 
   return (

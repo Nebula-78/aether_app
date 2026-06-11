@@ -101,7 +101,7 @@ const InputZone = ({ onSend, streaming, disabled }) => {
     // Helper to read file as base64
     const readFileAsBase64 = (file) => new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+      reader.onload = (e) => resolve(e.target.result); // Keep the full data URL
       reader.readAsDataURL(file);
     });
 
@@ -111,16 +111,16 @@ const InputZone = ({ onSend, streaming, disabled }) => {
     }
 
     for (const attachment of attachments) {
-      const base64 = await readFileAsBase64(attachment.file);
+      const dataUrl = await readFileAsBase64(attachment.file);
       messageContent.push({
         type: "image_url",
         image_url: {
-          url: `data:${attachment.type};base64,${base64}`
+          url: dataUrl
         }
       });
     }
 
-    onSend(messageContent.length === 1 && messageContent[0].type === 'text' ? messageContent[0].text : messageContent);
+    onSend(messageContent);
     setText('');
     setAttachments([]);
     if (textareaRef.current) {

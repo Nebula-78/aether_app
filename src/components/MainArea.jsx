@@ -101,7 +101,15 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
       // Use the updated messages directly from the scope
       const finalMessages = updatedMessagesForSave;
       
-      let title = finalMessages[0]?.content?.slice(0, 40) || 'Nouvelle conversation';
+      const firstMsgContent = finalMessages[0]?.content;
+      let title = 'Nouvelle conversation';
+
+      if (typeof firstMsgContent === 'string') {
+        title = firstMsgContent.slice(0, 40);
+      } else if (Array.isArray(firstMsgContent)) {
+        const textPart = firstMsgContent.find(p => p.type === 'text');
+        if (textPart) title = textPart.text.slice(0, 40);
+      }
       
       // Auto-génération du titre si c'est le premier échange
       if (!activeConvId && finalMessages.length >= 2) {
@@ -270,10 +278,16 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
           )}
           <button
             onClick={() => setShowPromptEdit(!showPromptEdit)}
-            className="p-1.5 text-txt-secondary hover:text-accent hover:bg-item-hover rounded-md transition-all cursor-pointer bg-main-bg/50 backdrop-blur-sm border border-border-subtle shadow-sm"
+            className="flex items-center gap-2 p-1.5 text-txt-secondary hover:text-accent hover:bg-item-hover rounded-md transition-all cursor-pointer bg-main-bg/50 backdrop-blur-sm border border-border-subtle shadow-sm"
             title="Prompt système"
           >
             <span className="text-[12px] font-mono">system</span>
+            <div className="h-4 w-[1px] bg-border-subtle mx-0.5" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-accent/80">
+              {activePersona === 'coder' ? 'Développeur' : 
+               activePersona === 'writer' ? 'Rédacteur' : 
+               activePersona === 'analyst' ? 'Analyste' : 'ARIA'}
+            </span>
           </button>
         </div>
 
@@ -411,7 +425,7 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
         <div className="max-w-3xl mx-auto">
           <InputZone onSend={handleSendMessage} streaming={streaming} disabled={streaming} />
           <p className="text-[10px] text-txt-secondary text-center mt-3">
-            Aether peut faire des erreurs. Vérifiez les informations importantes.
+            ARIA peut faire des erreurs. Vérifiez les informations importantes.
           </p>
         </div>
       </div>

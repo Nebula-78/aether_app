@@ -58,7 +58,7 @@ const SidebarItem = ({ title, active, onClick, onRename, delay = 0 }) => {
     <button
       onClick={onClick}
       onDoubleClick={() => setIsEditing(true)}
-      aria-label={`Discussion : ${title}`}
+      aria-label={`Discussion : ${typeof title === 'string' ? title : 'Sans titre'}`}
       className={`
         w-full text-left px-3 py-2 text-[13px] rounded-md transition-colors truncate cursor-pointer select-none
         ${active ? 'bg-item-active text-txt-primary' : 'text-txt-primary hover:bg-item-hover'}
@@ -68,7 +68,7 @@ const SidebarItem = ({ title, active, onClick, onRename, delay = 0 }) => {
       }}
       title="Double-cliquer pour renommer"
     >
-      {title}
+      {typeof title === 'string' ? title : 'Sans titre'}
     </button>
   );
 };

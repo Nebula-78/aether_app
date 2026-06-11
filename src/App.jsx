@@ -96,6 +96,29 @@ function App() {
     }
   }, [refreshConversations]);
 
+  const handlePersonaChange = useCallback((personaId) => {
+    setActivePersona(personaId);
+    
+    const personaPrompts = {
+      default: "Tu es ARIA (AI Research & Interaction Agent), un assistant IA utile, honnête et inoffensif. Tu as accès à des outils pour interagir avec le système de fichiers (lecture, écriture, création de dossiers) et exécuter des commandes. N'hésite pas à utiliser ces outils lorsque l'utilisateur te demande d'effectuer des tâches sur son ordinateur.",
+      coder: "Tu es un ingénieur logiciel expert. Tu as accès à des outils système. Utilise-les pour manipuler des fichiers, créer des structures de dossiers et exécuter du code si nécessaire.",
+      writer: "Tu es un écrivain professionnel. Tu as accès aux fichiers système pour lire ou écrire tes brouillons.",
+      analyst: "Tu es un analyste de données. Tu as accès aux outils système pour lire des fichiers et exécuter des scripts d'analyse."
+    };
+
+    const newPrompt = personaPrompts[personaId] || personaPrompts.default;
+    setSystemPrompt(newPrompt);
+    
+    if (activeConvId) {
+      window.electronAPI.listConversations().then(list => {
+        const conv = list.find(c => c.id === activeConvId);
+        if (conv) {
+          window.electronAPI.saveConversation({ ...conv, systemPrompt: newPrompt });
+        }
+      });
+    }
+  }, [activeConvId]);
+
   if (loading) {
     return <div className="h-screen bg-main-bg flex items-center justify-center text-txt-secondary">Chargement...</div>;
   }
@@ -128,7 +151,7 @@ function App() {
               userProfile={config}
               onToggle={() => setShowSidebar(false)}
               activePersona={activePersona}
-              onPersonaChange={setActivePersona}
+              onPersonaChange={handlePersonaChange}
               onOpenSettings={() => setShowSettings(true)}
             />
           </div>

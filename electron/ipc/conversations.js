@@ -47,7 +47,7 @@ ipcMain.handle('conversation:export', async (e, { title, messages }) => {
     if (filePath) {
       let content = `# ${title}\n\n`;
       messages.forEach(msg => {
-        const role = msg.role === 'user' ? '**Utilisateur**' : '**Aether**';
+        const role = msg.role === 'user' ? '**Utilisateur**' : '**ARIA**';
         if (msg.content) {
           content += `### ${role}\n${msg.content}\n\n`;
         }

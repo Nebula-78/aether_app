@@ -17,7 +17,7 @@ import SidebarItem from './SidebarItem';
 import ProfileMenu from './ProfileMenu';
 
 const PERSONAS = [
-  { id: 'default', name: 'Aether', icon: <UserCircle size={14} /> },
+  { id: 'default', name: 'ARIA', icon: <UserCircle size={14} /> },
   { id: 'coder', name: 'Développeur', icon: <CodeIcon size={14} /> },
   { id: 'writer', name: 'Rédacteur', icon: <PenTool size={14} /> },
   { id: 'analyst', name: 'Analyste', icon: <BarChartHorizontal size={14} /> },
@@ -72,7 +72,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
     <aside className="w-full bg-sidebar-bg border-r border-border-subtle flex flex-col overflow-hidden select-none h-full">
       {/* Header */}
       <div className="h-[52px] flex items-center justify-between px-4">
-        <span className="font-body text-lg font-medium text-txt-primary tracking-tight">Aether</span>
+        <span className="font-body text-lg font-medium text-txt-primary tracking-tight">ARIA</span>
         <div className="flex items-center gap-1 text-txt-secondary">
           <button 
             onClick={onOpenSettings}
@@ -203,7 +203,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
             activeProfileId={userProfile?.id}
             onSwitch={() => setShowProfileMenu(false)}
             onClose={() => setShowProfileMenu(false)}
-            onAdd={() => { /* Implement later: navigate to OnboardingScreen */ }}
+            onOpenSettings={onOpenSettings}
           />
         )}
         <div 
