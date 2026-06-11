@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCircle, Wrench, Palette, Keyboard, Trash2, Plus, Check, Save } from 'lucide-react';
+import { X, UserCircle, Wrench, Palette, Keyboard, Trash2, Plus, Check, Save, Search, Loader2 } from 'lucide-react';
 
 const SettingsModal = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('profils');
   const [profiles, setProfiles] = useState({});
   const [fontScale, setFontScale] = useState(1);
   const [systemPrompt, setSystemPrompt] = useState(''); 
+  const [tavilyKey, setTavilyKey] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProfile, setNewProfile] = useState({
     name: '',
@@ -18,8 +19,9 @@ const SettingsModal = ({ onClose }) => {
   useEffect(() => {
     refreshProfiles();
     window.electronAPI.loadConfig().then(config => {
-      if (config && config.defaultSystemPrompt) {
-        setSystemPrompt(config.defaultSystemPrompt);
+      if (config) {
+        if (config.defaultSystemPrompt) setSystemPrompt(config.defaultSystemPrompt);
+        if (config.tavilyApiKey) setTavilyKey(config.tavilyApiKey);
       }
     });
   }, []);
@@ -64,10 +66,17 @@ const SettingsModal = ({ onClose }) => {
     alert("Prompt système par défaut sauvegardé !");
   };
 
+  const handleSaveTavilyKey = async () => {
+    const currentConfig = await window.electronAPI.loadConfig();
+    await window.electronAPI.saveConfig({ ...currentConfig, tavilyApiKey: tavilyKey });
+    alert("Clé Tavily sauvegardée !");
+  };
+
   const tabs = [
     { id: 'profils', label: 'Profils API', icon: <UserCircle size={16} /> },
+    { id: 'recherche', label: 'Recherche', icon: <Search size={16} /> },
     { id: 'apparence', label: 'Apparence', icon: <Palette size={16} /> },
-    { id: 'prompt', label: 'Prompt Système', icon: <Wrench size={16} /> },
+    { id: 'prompt', label: 'Prompt Système', icon: <Keyboard size={16} /> },
   ];
 
   return (
@@ -163,6 +172,41 @@ const SettingsModal = ({ onClose }) => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {activeTab === 'recherche' && (
+              <div className="space-y-6">
+                <div className="bg-sidebar-bg p-4 rounded-xl border border-border-subtle space-y-4">
+                  <div>
+                    <h4 className="text-txt-primary font-medium mb-1">Intégration Tavily</h4>
+                    <p className="text-xs text-txt-secondary mb-4">
+                      Tavily permet à ARIA d'effectuer des recherches sur le web en temps réel pour obtenir des informations fraîches.
+                    </p>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-semibold text-txt-secondary uppercase tracking-wider">Clé API Tavily</label>
+                      <input 
+                        type="password" 
+                        placeholder="tvly-..." 
+                        value={tavilyKey} 
+                        onChange={e => setTavilyKey(e.target.value)} 
+                        className="w-full bg-input-bg border border-border-input rounded-lg px-3 py-2 text-sm text-txt-primary outline-none focus:border-accent" 
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleSaveTavilyKey} 
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors"
+                  >
+                    <Save size={16} /> Sauvegarder la configuration
+                  </button>
+                </div>
+                
+                <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                  <p className="text-xs text-blue-400 leading-relaxed">
+                    💡 Vous pouvez obtenir une clé API gratuite sur <a href="https://tavily.com" target="_blank" rel="noreferrer" className="underline">tavily.com</a>. Le modèle gratuit permet jusqu'à 1000 recherches par mois.
+                  </p>
+                </div>
               </div>
             )}
             

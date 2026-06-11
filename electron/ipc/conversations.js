@@ -59,6 +59,37 @@ ipcMain.handle('conversation:export', async (e, { title, messages }) => {
     return { success: false };
   });
 
+  ipcMain.handle('conversation:generate-summary', async (e, messages) => {
+    const id = store.get('activeProfileId');
+    const profileEnc = store.get(`profiles.${id}`);
+    if (!profileEnc) return null;
+    const { safeStorage } = require('electron');
+    const apiKey = safeStorage.decryptString(Buffer.from(profileEnc.apiKey, 'base64')).toString();
+
+    try {
+      const res = await fetch(`${profileEnc.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: profileEnc.model,
+          messages: [
+            ...messages.slice(-20), // On prend les 20 derniers messages pour le résumé
+            { role: 'user', content: 'Résume les points clés, décisions ou informations importantes de cette conversation en 3-5 phrases maximum. Ce résumé sera utilisé comme mémoire contextuelle pour nos futures discussions.' }
+          ],
+          max_tokens: 200
+        })
+      });
+      const json = await res.json();
+      return json.choices?.[0]?.message?.content || null;
+    } catch (err) {
+      console.error("Erreur génération résumé:", err);
+      return null;
+    }
+  });
+
   ipcMain.handle('conversation:generate-title', async (e, messages) => {
     const id = store.get('activeProfileId');
     const profileEnc = store.get(`profiles.${id}`);

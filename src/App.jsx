@@ -19,6 +19,7 @@ function App() {
   const [activeArtifact, setActiveArtifact] = useState(null);
   const [activePersona, setActivePersona] = useState('default');
   const [showSettings, setShowSettings] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   // Écouter les demandes de confirmation de tools
   useEffect(() => {
@@ -100,10 +101,10 @@ function App() {
     setActivePersona(personaId);
     
     const personaPrompts = {
-      default: "Tu es ARIA (AI Research & Interaction Agent), un assistant IA utile, honnête et inoffensif. Tu as accès à des outils pour interagir avec le système de fichiers (lecture, écriture, création de dossiers) et exécuter des commandes. N'hésite pas à utiliser ces outils lorsque l'utilisateur te demande d'effectuer des tâches sur son ordinateur.",
-      coder: "Tu es un ingénieur logiciel expert. Tu as accès à des outils système. Utilise-les pour manipuler des fichiers, créer des structures de dossiers et exécuter du code si nécessaire.",
-      writer: "Tu es un écrivain professionnel. Tu as accès aux fichiers système pour lire ou écrire tes brouillons.",
-      analyst: "Tu es un analyste de données. Tu as accès aux outils système pour lire des fichiers et exécuter des scripts d'analyse."
+      default: "Tu es ARIA (AI Research & Interaction Agent). Adopte un style pédagogique, éditorial et équilibré, similaire à celui de Claude AI. Structure tes réponses de manière fluide : commence par une introduction contextuelle, utilise des titres clairs, des listes à puces pour les points clés, et réserve les tableaux uniquement pour des données purement statistiques ou des comparaisons directes. Évite le 'trop-plein' visuel et privilégie la clarté narrative.",
+      coder: "Tu es un ingénieur logiciel expert. Comme un mentor technique, explique le 'pourquoi' avant le 'comment'. Utilise des blocs de code clairs, des listes d'étapes logiques et évite les tableaux sauf pour des comparatifs de complexité ou de compatibilité.",
+      writer: "Tu es un écrivain professionnel spécialisé dans la clarté et l'élégance. Ta narration doit être fluide et immersive. Évite toute structure rigide comme les tableaux ou les listes trop mécaniques, sauf si le format l'exige (ex: script).",
+      analyst: "Tu es un analyste de données capable de synthétiser des informations complexes. Ne te contente pas de lister des chiffres : interprète-les. Utilise des tableaux pour la précision brute, mais accompagne-les toujours d'une analyse textuelle approfondie et de listes d'insights."
     };
 
     const newPrompt = personaPrompts[personaId] || personaPrompts.default;
@@ -133,14 +134,12 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-main-bg text-txt-primary">
-      <TitleBar />
+    <div className={`flex flex-col h-screen overflow-hidden bg-main-bg text-txt-primary transition-all duration-500`}>
+      <TitleBar focusMode={focusMode} />
       
       <div className="flex flex-1 overflow-hidden relative">
-        <div 
-          className={`h-full transition-all duration-300 ease-in-out overflow-hidden ${showSidebar ? 'w-[280px]' : 'w-0'}`}
-        >
-          <div className="w-[280px] h-full">
+        {!focusMode && showSidebar && (
+          <div className="w-[280px] h-full shrink-0 border-r border-border-subtle animate-[fadeSlideIn_0.3s_ease_both]">
             <Sidebar 
               conversations={conversations} 
               activeId={activeConvId}
@@ -155,21 +154,26 @@ function App() {
               onOpenSettings={() => setShowSettings(true)}
             />
           </div>
-        </div>
+        )}
         
         <MainArea 
           activeConvId={activeConvId}
           setActiveConvId={setActiveConvId}
+          conversations={conversations}
           messages={messages}
           setMessages={setMessages}
           systemPrompt={systemPrompt}
           setSystemPrompt={setSystemPrompt}
           onConversationUpdated={refreshConversations}
           startNewConversation={startNewConversation}
+          onSelectConversation={selectConversation}
           showSidebar={showSidebar}
           onToggleSidebar={() => setShowSidebar(true)}
           setActiveArtifact={setActiveArtifact}
           activePersona={activePersona}
+          onPersonaChange={handlePersonaChange}
+          focusMode={focusMode}
+          setFocusMode={setFocusMode}
         />
 
         {/* Panneau Artifacts (3ème colonne) */}

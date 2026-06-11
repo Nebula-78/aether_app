@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Square, X, Minus, Copy } from 'lucide-react';
 
-const TitleBar = () => {
+const TitleBar = ({ focusMode }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const platform = window.electronAPI?.platform || 'darwin';
+
+  if (focusMode) {
+    return <div className="w-full flex bg-main-bg" style={{ height: '8px', WebkitAppRegion: 'drag' }} />;
+  }
 
   useEffect(() => {
     const checkMaximized = async () => {

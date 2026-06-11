@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PanelLeft, Download, ChevronDown } from 'lucide-react';
+import { PanelLeft, Download, ChevronDown, Maximize2, Minimize2, Brain, Save } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import InputZone from './InputZone';
 import ToolCallBlock from './ToolCallBlock';
+import WelcomeDashboard from './WelcomeDashboard';
 
-const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, systemPrompt, setSystemPrompt, onConversationUpdated, startNewConversation, showSidebar, onToggleSidebar, setActiveArtifact, activePersona }) => {
+const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setMessages, systemPrompt, setSystemPrompt, onConversationUpdated, startNewConversation, onSelectConversation, showSidebar, onToggleSidebar, setActiveArtifact, activePersona, onPersonaChange, focusMode, setFocusMode }) => {
   const [streaming, setStreaming] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [activeToolCalls, setActiveToolCalls] = useState([]);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [showPromptEdit, setShowPromptEdit] = useState(false);
+  const [memorizing, setMemorizing] = useState(false);
   const scrollRef = useRef(null);
   const messagesRef = useRef(messages);
 
@@ -196,8 +198,14 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
     };
   }, []);
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, options = {}) => {
     if (!content || streaming) return;
+
+    // Gestion des commandes spéciales interceptées par l'UI
+    if (options.isExportCommand) {
+      handleExport();
+      return;
+    }
 
     // Check if content is a string (legacy text) or an array (new multipart format)
     const isText = typeof content === 'string';
@@ -217,7 +225,11 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
     setCurrentResponse('');
     setActiveToolCalls([]);
 
-    window.electronAPI.sendMessage({ messages: messagesToSend, persona: activePersona });
+    window.electronAPI.sendMessage({ 
+      messages: messagesToSend, 
+      persona: activePersona,
+      options 
+    });
   };
 
   const handleEditMessage = (index, newContent) => {
@@ -254,6 +266,32 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
     window.electronAPI.sendMessage({ messages: messagesToSend, persona: activePersona });
   };
 
+  const handleMemorize = async () => {
+    if (messages.length < 2 || memorizing) return;
+    
+    setMemorizing(true);
+    try {
+      const summary = await window.electronAPI.generateSummary(messages);
+      if (summary) {
+        const config = await window.electronAPI.loadConfig();
+        const memories = config.memories || [];
+        
+        // On évite les doublons ou on limite à 10 souvenirs
+        const updatedMemories = [
+          { id: Date.now(), summary, topic: conversations.find(c => c.id === activeConvId)?.title || 'Sujet inconnu' },
+          ...memories
+        ].slice(0, 10);
+        
+        await window.electronAPI.saveConfig({ ...config, memories: updatedMemories });
+        alert("Conversation mémorisée ! ARIA s'en souviendra lors de vos prochaines discussions.");
+      }
+    } catch (e) {
+      console.error("Erreur mémorisation:", e);
+    } finally {
+      setMemorizing(false);
+    }
+  };
+
   const handleExport = async () => {
     if (messages.length === 0) return;
     const convs = await window.electronAPI.listConversations();
@@ -263,7 +301,7 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
   };
 
   return (
-    <main className="flex-1 bg-main-bg flex flex-col overflow-hidden relative">
+    <main className={`flex-1 flex flex-col overflow-hidden relative z-10 ${focusMode ? 'bg-main-bg' : ''}`}>
       {/* Barre d'outils supérieure */}
       <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
@@ -312,6 +350,25 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
               <Download size={14} />
               Exporter (.md)
             </button>
+            <button 
+              onClick={handleMemorize}
+              disabled={memorizing || messages.length < 2}
+              className={`flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium rounded-md transition-all cursor-pointer bg-main-bg/50 backdrop-blur-sm border border-border-subtle shadow-sm ${
+                memorizing ? 'text-accent animate-pulse' : 'text-txt-secondary hover:text-accent hover:bg-item-hover'
+              } disabled:opacity-30`}
+              title="Mémoriser les points clés de cette conversation"
+            >
+              {memorizing ? <Save size={14} className="animate-spin" /> : <Brain size={14} />}
+              {memorizing ? 'Mémorisation...' : 'Mémoriser'}
+            </button>
+            <button 
+              onClick={() => setFocusMode(!focusMode)}
+              aria-label={focusMode ? "Quitter le mode focus" : "Passer en mode focus"}
+              className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-txt-secondary hover:text-accent hover:bg-item-hover rounded-md transition-all cursor-pointer bg-main-bg/50 backdrop-blur-sm border border-border-subtle shadow-sm"
+            >
+              {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {focusMode ? 'Quitter Focus' : 'Mode Focus'}
+            </button>
           </div>
         )}
       </div>
@@ -322,14 +379,14 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
         className="flex-1 overflow-y-auto px-4 py-8 custom-scrollbar"
       >
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-8 animate-[heroReveal_0.4s_ease_both]">
-            <div className="flex items-center gap-3 font-display text-[42px] text-txt-primary tracking-tight leading-tight select-none">
-              <span className="text-accent text-[38px]">*</span>
-              <h1>Comment puis-je vous aider ?</h1>
-            </div>
-          </div>
+          <WelcomeDashboard 
+            onSend={handleSendMessage} 
+            startNewConversation={startNewConversation}
+            conversations={conversations}
+            onSelect={onSelectConversation}
+          />
         ) : (
-          <div className="max-w-3xl mx-auto w-full">
+          <div className={`mx-auto w-full transition-all duration-500 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
             {messages.map((msg, i) => {
               if (msg.role === 'tool') {
                 return null; // Rendu inline géré par le message assistant
@@ -338,7 +395,7 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
               if (msg.role === 'assistant' && msg.tool_calls) {
                 return (
                   <div key={i} className="mb-6">
-                    {msg.tool_calls.map(tc => {
+                    {msg.tool_calls.map((tc, tcIdx) => {
                       const toolMsg = messages.find(m => m.role === 'tool' && m.tool_call_id === tc.id);
                       let result = null;
                       if (toolMsg) {
@@ -351,6 +408,7 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
                       return (
                         <ToolCallBlock 
                           key={tc.id}
+                          index={tcIdx + 1}
                           name={tc.function.name}
                           args={tc.function.arguments}
                           status={toolMsg ? (result && result.error ? 'error' : 'success') : 'running'}
@@ -382,9 +440,10 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
             })}
 
             {/* Affichage des tool calls en cours d'exécution */}
-            {activeToolCalls.map(tc => (
+            {activeToolCalls.map((tc, tcIdx) => (
               <ToolCallBlock 
                 key={tc.id}
+                index={tcIdx + 1}
                 name={tc.name}
                 args={tc.args}
                 status={tc.status}
@@ -422,8 +481,14 @@ const MainArea = ({ activeConvId, setActiveConvId, messages, setMessages, system
 
       {/* Zone de saisie (fixe en bas) */}
       <div className="p-6 bg-gradient-to-t from-main-bg via-main-bg to-transparent">
-        <div className="max-w-3xl mx-auto">
-          <InputZone onSend={handleSendMessage} streaming={streaming} disabled={streaming} />
+        <div className={`mx-auto transition-all duration-500 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+          <InputZone 
+            onSend={handleSendMessage} 
+            streaming={streaming} 
+            disabled={streaming} 
+            activePersona={activePersona}
+            onPersonaChange={onPersonaChange}
+          />
           <p className="text-[10px] text-txt-secondary text-center mt-3">
             ARIA peut faire des erreurs. Vérifiez les informations importantes.
           </p>

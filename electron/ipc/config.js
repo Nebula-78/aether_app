@@ -4,10 +4,16 @@ function setupConfigHandlers(store) {
   ipcMain.handle('config:save', async (e, profile) => {
     try {
       const encrypted = safeStorage.encryptString(profile.apiKey);
-      store.set(`profiles.${profile.id}`, {
+      const dataToSave = {
         ...profile,
         apiKey: encrypted.toString('base64')
-      });
+      };
+      
+      if (profile.tavilyApiKey) {
+        dataToSave.tavilyApiKey = safeStorage.encryptString(profile.tavilyApiKey).toString('base64');
+      }
+      
+      store.set(`profiles.${profile.id}`, dataToSave);
       store.set('activeProfileId', profile.id);
       return { success: true };
     } catch (err) {
@@ -24,7 +30,15 @@ function setupConfigHandlers(store) {
       const decrypted = safeStorage.decryptString(
         Buffer.from(profile.apiKey, 'base64')
       );
-      return { ...profile, apiKey: decrypted.toString() };
+      const result = { ...profile, apiKey: decrypted.toString() };
+      
+      if (profile.tavilyApiKey) {
+        result.tavilyApiKey = safeStorage.decryptString(
+          Buffer.from(profile.tavilyApiKey, 'base64')
+        ).toString();
+      }
+      
+      return result;
     } catch (err) {
       return null;
     }

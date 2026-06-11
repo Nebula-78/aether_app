@@ -3,7 +3,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const os = require('os');
 const path = require('path');
-const { shell } = require('electron');
+const { shell, safeStorage } = require('electron');
 
 const tools = [
   { type: "function", function: { name: "run_command", description: "Exécute une commande shell sur le système. Utilisable pour la gestion de fichiers avancée, la navigation, etc.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } },
@@ -11,7 +11,8 @@ const tools = [
   { type: "function", function: { name: "write_file", description: "Crée ou écrase un fichier avec du contenu texte.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } } },
   { type: "function", function: { name: "create_directory", description: "Crée un nouveau répertoire.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } } },
   { type: "function", function: { name: "list_directory", description: "Liste les fichiers et dossiers dans un répertoire.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } } },
-  { type: "function", function: { name: "google_search", description: "Effectue une recherche sur Google pour obtenir des informations à jour.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
+  { type: "function", function: { name: "tavily_search", description: "Effectue une recherche approfondie sur le web via Tavily pour obtenir des résultats précis et synthétisés.", parameters: { type: "object", properties: { query: { type: "string", description: "La requête de recherche." }, search_depth: { type: "string", enum: ["basic", "advanced"], default: "basic", description: "La profondeur de la recherche." } }, required: ["query"] } } },
+  { type: "function", function: { name: "google_search", description: "Obsolète : utilisez tavily_search pour de meilleurs résultats. Effectue une recherche web.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
   { type: "function", function: { name: "open_file", description: "Ouvre un fichier avec l'application système par défaut.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } } },
   { type: "function", function: { name: "open_url", description: "Ouvre une URL dans le navigateur par défaut.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } } },
   { type: "function", function: { name: "copy_to_clipboard", description: "Copie le texte spécifié dans le presse-papier.", parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } } },
@@ -36,10 +37,72 @@ function getSafePath(filePath) {
   return resolved;
 }
 
-// Placeholder for confirmation logic (to be passed as a callback)
+const StoreModule = require('electron-store');
+const Store = StoreModule.default || StoreModule;
+const globalStore = new Store();
+
 async function executeTool(name, args, win, askConfirmationCallback) {
   try {
     switch (name) {
+      case 'tavily_search':
+      case 'google_search': {
+        const { query, search_depth = 'basic' } = args;
+        console.log(`[Tool:Tavily] Recherche pour: "${query}" (depth: ${search_depth})`);
+        
+        const profileId = globalStore.get('activeProfileId');
+        const profile = globalStore.get(`profiles.${profileId}`);
+        let apiKeyEnc = profile?.tavilyApiKey;
+
+        if (!apiKeyEnc) {
+          console.error("[Tool:Tavily] Erreur: Clé API manquante dans le store.");
+          return { error: "Clé API Tavily manquante. Veuillez la configurer dans les paramètres." };
+        }
+
+        let apiKey;
+        try {
+          apiKey = safeStorage.decryptString(Buffer.from(apiKeyEnc, 'base64'));
+          console.log("[Tool:Tavily] Clé déchiffrée avec succès.");
+        } catch (e) {
+          console.error("[Tool:Tavily] Erreur de déchiffrement:", e);
+          return { error: "Erreur lors du déchiffrement de la clé Tavily." };
+        }
+
+        try {
+          const response = await fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: apiKey,
+              query,
+              search_depth,
+              include_answer: true,
+              max_results: 5
+            })
+          });
+
+          if (!response.ok) {
+            const err = await response.text();
+            console.error(`[Tool:Tavily] API Error ${response.status}:`, err);
+            return { error: `Erreur Tavily (${response.status}): ${err}` };
+          }
+
+          const data = await response.json();
+          console.log(`[Tool:Tavily] Succès: ${data.results?.length || 0} résultats trouvés.`);
+          
+          return {
+            answer: data.answer,
+            results: data.results.map(r => ({
+              title: r.title,
+              url: r.url,
+              content: r.content,
+              score: r.score
+            }))
+          };
+        } catch (fetchErr) {
+          console.error("[Tool:Tavily] Fetch Error:", fetchErr);
+          return { error: `Erreur de connexion à Tavily: ${fetchErr.message}` };
+        }
+      }
       case 'run_command': {
         const { command } = args;
         const confirmed = await askConfirmationCallback({ name, command }, win);
@@ -73,9 +136,6 @@ async function executeTool(name, args, win, askConfirmationCallback) {
         const safePath = getSafePath(args.path || '.');
         const files = await fs.readdir(safePath, { withFileTypes: true });
         return { files: files.map(f => ({ name: f.name, isDirectory: f.isDirectory(), isFile: f.isFile() })) };
-      }
-      case 'google_search': {
-        return { error: "La recherche Google n'est pas encore configurée. Veuillez fournir une clé API de recherche personnalisée." };
       }
       case 'open_file': {
         await shell.openPath(getSafePath(args.path));

@@ -11,21 +11,22 @@
   --font-mono: "Geist Mono", monospace;
 
   /* Colors */
-  --color-sidebar-bg: #1a1a1a;
-  --color-main-bg: #0d0d0d;
-  --color-input-bg: #1e1e1e;
-  --color-item-hover: #252525;
-  --color-item-active: #2a2a2a;
-  --color-badge-bg: #3a2a20;
+  --color-main-bg: #0d1117;
+  --color-sidebar-bg: #132436;
+  --color-input-bg: #1a2d42;
+  --color-item-hover: #1e3350;
+  --color-item-active: #243d5e;
+  --color-badge-bg: #1e1a3a;
 
-  --color-txt-primary: #e8e6e3;
-  --color-txt-secondary: #8a8a8a;
-  --color-txt-muted: #555555;
-  --color-accent: #cc785c;
-  --color-accent-hover: #e8956d;
+  --color-txt-primary: #F2ECEC;
+  --color-txt-secondary: #8a9ab0;
+  --color-txt-muted: #4a5a6a;
+  --color-accent: #E05A29;
+  --color-accent-hover: #f06a35;
+  --color-accent-secondary: #9C90FC;
 
-  --color-border-subtle: #282828;
-  --color-border-input: #333333;
+  --color-border-subtle: #1e3350;
+  --color-border-input: #2a4060;
 
   /* Spacing / Radius */
   --radius-sm: 6px;

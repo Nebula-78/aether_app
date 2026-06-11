@@ -204,14 +204,50 @@ const ChatMessage = ({ role, content, isError, isStreaming, setActiveArtifact, o
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const MarkdownRenderer = ({ text }) => (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={markdownComponents(setActiveArtifact)}
-    >
-      {text}
-    </ReactMarkdown>
-  );
+  // ─── Citations [^n] ────────────────────────────────────────────────────────
+  const renderCitations = (text) => {
+    if (!text) return text;
+    // Remplace [^n] par un lien stylisé
+    const parts = text.split(/(\[\^\d+\])/g);
+    return parts.map((part, index) => {
+      const match = part.match(/\[\^(\d+)\]/);
+      if (match) {
+        const num = match[1];
+        return (
+          <sup key={index} className="mx-0.5">
+            <a 
+              href={`#tool-${num}`} 
+              className="text-accent hover:underline font-bold text-[10px]"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById(`tool-call-${num}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+            >
+              [{num}]
+            </a>
+          </sup>
+        );
+      }
+      return part;
+    });
+  };
+
+  const MarkdownRenderer = ({ text }) => {
+    // Pré-traitement pour transformer [^n] en quelque chose que ReactMarkdown peut laisser tranquille ou traiter
+    // Mais le plus simple pour le scroll interactif est de passer par les composants ReactMarkdown
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          ...markdownComponents(setActiveArtifact),
+          text: ({ value }) => renderCitations(value)
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    );
+  };
 
   const renderContent = () => {
     if (isEditing) {

@@ -12,13 +12,19 @@ import {
   Loader2, 
   CheckCircle2, 
   XCircle,
-  Eye
+  Eye,
+  ExternalLink,
+  Search
 } from 'lucide-react';
 
 const getToolIcon = (name) => {
   switch (name) {
+    case 'tavily_search':
+    case 'google_search':
+      return <Search size={16} />;
     case 'run_command':
-      return <Terminal size={16} />;
+//... rest of the function ...
+
     case 'read_file':
     case 'write_file':
     case 'open_file':
@@ -39,6 +45,10 @@ const getToolIcon = (name) => {
 
 const getToolTitle = (name) => {
   switch (name) {
+    case 'tavily_search':
+      return "Recherche intelligente (Tavily)";
+    case 'google_search':
+      return "Recherche Web";
     case 'run_command':
       return "Exécution de commande";
     case 'read_file':
@@ -64,7 +74,7 @@ const getToolTitle = (name) => {
   }
 };
 
-const ToolCallBlock = ({ name, args, status, result }) => {
+const ToolCallBlock = ({ name, args, status, result, index }) => {
   const [isOpen, setIsOpen] = useState(false);
   const title = getToolTitle(name);
   const icon = getToolIcon(name);
@@ -79,7 +89,16 @@ const ToolCallBlock = ({ name, args, status, result }) => {
   let isSuccess = status === 'success' || (result && !result.error);
 
   return (
-    <div className="w-full mb-4 border border-border-subtle bg-sidebar-bg/50 rounded-xl overflow-hidden animate-[fadeSlideIn_0.2s_ease_both]">
+    <div 
+      id={`tool-call-${index}`}
+      className="w-full mb-4 border border-border-subtle bg-sidebar-bg/50 rounded-xl overflow-hidden animate-[fadeSlideIn_0.2s_ease_both] group"
+    >
+      {index && (
+        <div className="flex items-center gap-2 mt-2 ml-4 mb-[-8px]">
+          <div className="w-1 h-1 rounded-full bg-accent/40" />
+          <span className="text-[9px] font-bold text-accent uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Source [^{index}]</span>
+        </div>
+      )}
       {/* Header */}
       <div 
         onClick={() => setIsOpen(prev => !prev)}
@@ -139,11 +158,49 @@ const ToolCallBlock = ({ name, args, status, result }) => {
           {result && (
             <div className="flex flex-col gap-1">
               <span className="text-[9px] font-sans font-bold text-txt-secondary uppercase tracking-wider">Sortie :</span>
-              <pre className={`border rounded-lg p-2.5 overflow-x-auto whitespace-pre max-h-52 ${
-                result.error ? 'bg-accent/5 border-accent/20 text-accent' : 'bg-input-bg border-border-input text-txt-primary'
-              }`}>
-                {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-              </pre>
+              {(name === 'tavily_search' || name === 'google_search') && result.results ? (
+                <div className="flex flex-col gap-3 mt-1">
+                  {result.answer && (
+                    <div className="bg-accent/5 border border-accent/20 rounded-lg p-3 text-xs leading-relaxed italic text-txt-primary">
+                      {result.answer}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {result.results.map((r, i) => (
+                      <div key={i} className="bg-sidebar-bg border border-border-subtle rounded-lg p-3 hover:border-accent/30 transition-all group/item">
+                        <div className="flex items-start justify-between gap-3 mb-1">
+                          <a 
+                            href={r.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-[12px] font-bold text-accent hover:underline flex items-center gap-1.5"
+                          >
+                            {r.title}
+                            <ExternalLink size={10} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                          </a>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[9px] font-mono text-txt-secondary uppercase tracking-tighter bg-item-hover px-1.5 py-0.5 rounded">
+                              Score: {Math.round(r.score * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-txt-secondary line-clamp-2 leading-normal">
+                          {r.content}
+                        </p>
+                        <div className="mt-2 text-[9px] text-txt-muted truncate opacity-60">
+                          {r.url}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <pre className={`border rounded-lg p-2.5 overflow-x-auto whitespace-pre max-h-52 ${
+                  result.error ? 'bg-accent/5 border-accent/20 text-accent' : 'bg-input-bg border-border-input text-txt-primary'
+                }`}>
+                  {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+                </pre>
+              )}
             </div>
           )}
         </div>
