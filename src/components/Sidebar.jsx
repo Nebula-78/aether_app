@@ -4,7 +4,6 @@ import {
   PanelLeft, 
   Plus, 
   Trash2,
-  Download, 
   ChevronDown,
   X,
   UserCircle,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 import ProfileMenu from './ProfileMenu';
+import { useAppStore } from '../store/useAppStore';
 
 const PERSONAS = [
   { id: 'default', name: 'ARIA', icon: <UserCircle size={14} /> },
@@ -23,14 +23,52 @@ const PERSONAS = [
   { id: 'analyst', name: 'Analyste', icon: <BarChartHorizontal size={14} /> },
 ];
 
-const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename, userProfile, onToggle, activePersona, onPersonaChange, onOpenSettings }) => {
+const Sidebar = ({ onOpenSettings }) => {
+  const { 
+    conversations, activeConvId, setActiveConvId, setMessages, setSystemPrompt,
+    showSidebar, setShowSidebar, activePersona, setActivePersona, config,
+    refreshConversations 
+  } = useAppStore();
+
   const [showSearch, setShowSearch] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const searchInputRef = useRef(null);
 
-  // Écouter le raccourci de recherche Ctrl+K
+  const startNewConversation = () => {
+    setActiveConvId(null);
+    setMessages([]);
+    setSystemPrompt('');
+  };
+
+  const deleteConversation = async (id, title) => {
+    const confirmed = await window.electronAPI.deleteConversationConfirm(title);
+    if (!confirmed) return;
+
+    await window.electronAPI.deleteConversation(id);
+    if (activeConvId === id) {
+      startNewConversation();
+    }
+    refreshConversations();
+  };
+
+  const renameConversation = async (id, newTitle) => {
+    const list = await window.electronAPI.listConversations();
+    const conv = list.find(c => c.id === id);
+    if (conv) {
+      const updatedConv = { ...conv, title: newTitle, updatedAt: new Date().toISOString() };
+      await window.electronAPI.saveConversation(updatedConv);
+      refreshConversations();
+    }
+  };
+
+  const selectConversation = (conv) => {
+    setActiveConvId(conv.id);
+    setMessages(conv.messages || []);
+    setSystemPrompt(conv.systemPrompt || '');
+  };
+
   useEffect(() => {
     const handleSearchShortcut = () => {
       setShowSearch(prev => !prev);
@@ -47,7 +85,6 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
     }
   }, [showSearch]);
 
-  // Recherche plein texte
   useEffect(() => {
     const performSearch = async () => {
       if (!searchQuery.trim()) {
@@ -91,7 +128,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
             <Search size={18} />
           </button>
           <button 
-            onClick={onToggle}
+            onClick={() => setShowSidebar(false)}
             aria-label="Réduire la barre latérale"
             className="p-1.5 hover:bg-item-hover rounded-md transition-colors cursor-pointer"
           >
@@ -132,7 +169,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
           {PERSONAS.map(p => (
             <button
               key={p.id}
-              onClick={() => onPersonaChange(p.id)}
+              onClick={() => setActivePersona(p.id)}
               className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
                 activePersona === p.id ? 'bg-accent text-white shadow-sm' : 'text-txt-secondary hover:bg-item-hover hover:text-txt-primary'
               }`}
@@ -148,7 +185,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
       {/* Main Nav */}
       <div className="px-2 py-2 flex flex-col gap-0.5">
         <button 
-          onClick={onNew}
+          onClick={startNewConversation}
           aria-label="Commencer une nouvelle conversation"
           className="w-full flex items-center gap-2 px-3 py-2 text-txt-secondary hover:bg-item-hover hover:text-txt-primary rounded-md transition-all text-[13px] cursor-pointer"
         >
@@ -169,15 +206,15 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
                 <div key={conv.id} className="relative group animate-[fadeSlideIn_0.2s_ease_both]">
                   <SidebarItem 
                     title={conv.title} 
-                    active={activeId === conv.id} 
-                    onClick={() => onSelect(conv)}
-                    onRename={(newTitle) => onRename(conv.id, newTitle)}
+                    active={activeConvId === conv.id} 
+                    onClick={() => selectConversation(conv)}
+                    onRename={(newTitle) => renameConversation(conv.id, newTitle)}
                     delay={i * 0.03} 
                   />
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDelete(conv.id, conv.title);
+                      deleteConversation(conv.id, conv.title);
                     }}
                     aria-label={`Supprimer la discussion ${conv.title}`}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-txt-secondary hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-sidebar-bg/80 backdrop-blur-sm rounded-md"
@@ -188,6 +225,14 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
                 </div>
               ))}
             </div>
+            {!searchQuery && (
+              <button
+                onClick={() => loadConversations(page + 1)}
+                className="w-full text-[11px] text-txt-secondary hover:text-accent py-2 text-center"
+              >
+                Charger plus...
+              </button>
+            )}
           </div>
         ) : searchQuery ? (
           <div className="text-center text-[12px] text-txt-secondary py-8">
@@ -200,7 +245,7 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
       <div className="border-t border-border-subtle p-3">
         {showProfileMenu && (
           <ProfileMenu 
-            activeProfileId={userProfile?.id}
+            activeProfileId={config?.id}
             onSwitch={() => setShowProfileMenu(false)}
             onClose={() => setShowProfileMenu(false)}
             onOpenSettings={onOpenSettings}
@@ -211,11 +256,11 @@ const Sidebar = ({ conversations, activeId, onSelect, onNew, onDelete, onRename,
           className="flex items-center gap-3 p-2 hover:bg-item-hover rounded-md cursor-pointer transition-colors group"
         >
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-[13px] font-medium uppercase">
-            {userProfile?.name?.slice(0, 2) || 'IA'}
+            {config?.name?.slice(0, 2) || 'IA'}
           </div>
           <div className="flex-1 overflow-hidden">
-            <div className="text-[13px] font-medium text-txt-primary truncate">{userProfile?.name || 'Mon Profil IA'}</div>
-            <div className="text-[11px] text-txt-secondary">{userProfile?.model || 'Modèle actif'}</div>
+            <div className="text-[13px] font-medium text-txt-primary truncate">{config?.name || 'Mon Profil IA'}</div>
+            <div className="text-[11px] text-txt-secondary">{config?.model || 'Modèle actif'}</div>
           </div>
           <div className="flex items-center gap-1 text-txt-secondary opacity-0 group-hover:opacity-100 transition-opacity">
             <ChevronDown size={14} />

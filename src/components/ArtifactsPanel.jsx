@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { X, Code, Eye, Copy, Check, Download, Monitor } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import DOMPurify from 'dompurify';
+import { useAppStore } from '../store/useAppStore';
 
-const ArtifactsPanel = ({ artifact, onClose }) => {
+const ArtifactsPanel = () => {
+  const { activeArtifact: artifact, setActiveArtifact } = useAppStore();
+  const onClose = () => setActiveArtifact(null);
   const [view, setView] = useState('preview'); // 'preview' or 'code'
   const [copied, setCopied] = useState(false);
+// ...
 
   if (!artifact) return null;
 
@@ -81,12 +86,13 @@ const ArtifactsPanel = ({ artifact, onClose }) => {
             {artifact.language === 'svg' ? (
               <div 
                 className="w-full h-full flex items-center justify-center p-8"
-                dangerouslySetInnerHTML={{ __html: artifact.content }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(artifact.content) }}
               />
             ) : (
               <iframe
                 title="Preview"
                 className="w-full h-full border-none"
+                sandbox="allow-scripts"
                 srcDoc={`
                   <html>
                     <head>

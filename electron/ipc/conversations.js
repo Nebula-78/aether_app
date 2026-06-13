@@ -13,9 +13,10 @@ function setupConversationHandlers(store) {
     store.set(`conversations.${conv.id}`, { ...conv, messages: truncatedMessages });
   });
 
-  ipcMain.handle('conversation:list', () => {
+  ipcMain.handle('conversation:list', (e, { limit = 20, offset = 0 } = {}) => {
     const convs = store.get('conversations', {});
-    return Object.values(convs).sort((a, b) => b.id - a.id);
+    const sortedConvs = Object.values(convs).sort((a, b) => b.id - a.id);
+    return sortedConvs.slice(offset, offset + limit);
   });
 ipcMain.on('conversation:delete', (e, id) => {
   store.delete(`conversations.${id}`);

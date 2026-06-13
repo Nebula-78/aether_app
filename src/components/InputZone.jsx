@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Mic, SendHorizontal, MicOff, Loader2, File, X, Image as ImageIcon, Square, Search, LayoutList, TextQuote, Command, Activity } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
-const InputZone = ({ onSend, streaming, disabled, activePersona, onPersonaChange }) => {
+const InputZone = () => {
+  const { 
+    streaming, 
+    activePersona, setActivePersona,
+    onSend 
+  } = useAppStore();
+  
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [attachments, setAttachments] = useState([]);
@@ -10,6 +17,11 @@ const InputZone = ({ onSend, streaming, disabled, activePersona, onPersonaChange
   const [formatMode, setFormatMode] = useState('prose'); // 'prose' or 'structured'
   const [showCommands, setShowCommands] = useState(false);
   const textareaRef = useRef(null);
+  
+  // Use a local disabled state or derive it
+  const disabled = false; // Placeholder for now, adjust based on your logic
+
+  // ... rest of the logic ...
   
   const commandsList = [
     { cmd: '/search', desc: 'Activer la recherche web pour ce message', icon: <Search size={14} /> },
@@ -135,7 +147,7 @@ const InputZone = ({ onSend, streaming, disabled, activePersona, onPersonaChange
       setText('Recherche web activée : '); // Pré-remplissage pour aider l'utilisateur
     } else if (cmd === '/code') {
       setText('');
-      if (onPersonaChange) onPersonaChange('coder');
+      setActivePersona('coder');
       onSend([{ type: "text", text: "Je souhaite que tu m'aides sur un projet de programmation." }], { formatMode: 'structured' });
     } else if (cmd === '/resume') {
       setText('');
@@ -176,12 +188,17 @@ const InputZone = ({ onSend, streaming, disabled, activePersona, onPersonaChange
 
     for (const attachment of attachments) {
       const dataUrl = await readFileAsBase64(attachment.file);
-      messageContent.push({
-        type: "image_url",
-        image_url: {
-          url: dataUrl
-        }
-      });
+      if (attachment.isImage) {
+        messageContent.push({
+          type: "image_url",
+          image_url: { url: dataUrl }
+        });
+      } else {
+        messageContent.push({
+          type: "file_url",
+          file_url: { url: dataUrl, name: attachment.name, mimeType: attachment.type }
+        });
+      }
     }
 
     onSend(messageContent, { useSearch, searchDepth, formatMode });

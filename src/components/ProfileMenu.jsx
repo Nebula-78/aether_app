@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Trash2, UserCircle, Settings, Plus } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
 const ProfileMenu = ({ activeProfileId, onSwitch, onClose, onOpenSettings }) => {
   const [profiles, setProfiles] = useState({});
@@ -8,21 +9,27 @@ const ProfileMenu = ({ activeProfileId, onSwitch, onClose, onOpenSettings }) => 
     window.electronAPI.listProfiles().then(setProfiles);
   }, []);
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
   const handleSwitch = async (id) => {
     await window.electronAPI.switchProfile(id);
     onSwitch(id);
     onClose();
-    // On ne recharge pas forcément toute la page, on laisse le parent gérer
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDeleteClick = (e, id) => {
     e.stopPropagation();
-    if (confirm("Supprimer ce profil ?")) {
-      await window.electronAPI.deleteProfile(id);
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async (confirmed) => {
+    if (confirmed && confirmDeleteId) {
+      await window.electronAPI.deleteProfile(confirmDeleteId);
       const newProfiles = { ...profiles };
-      delete newProfiles[id];
+      delete newProfiles[confirmDeleteId];
       setProfiles(newProfiles);
     }
+    setConfirmDeleteId(null);
   };
 
   return (
@@ -42,10 +49,10 @@ const ProfileMenu = ({ activeProfileId, onSwitch, onClose, onOpenSettings }) => 
 
       <div className="flex flex-col gap-1 max-h-60 overflow-y-auto custom-scrollbar">
         {Object.entries(profiles).map(([id, profile]) => (
-          <button
+          <div
             key={id}
             onClick={() => handleSwitch(id)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors group ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors group cursor-pointer ${
               activeProfileId === id ? 'bg-item-active text-txt-primary' : 'text-txt-secondary hover:bg-item-hover hover:text-txt-primary'
             }`}
           >
@@ -55,13 +62,13 @@ const ProfileMenu = ({ activeProfileId, onSwitch, onClose, onOpenSettings }) => 
               <Check size={14} className="text-accent" />
             ) : (
               <button 
-                onClick={(e) => handleDelete(e, id)} 
+                onClick={(e) => handleDeleteClick(e, id)} 
                 className="p-1 text-txt-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 size={12} />
               </button>
             )}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -74,6 +81,13 @@ const ProfileMenu = ({ activeProfileId, onSwitch, onClose, onOpenSettings }) => 
           <span>Gérer les profils</span>
         </button>
       </div>
+
+      {confirmDeleteId && (
+        <ConfirmModal
+          data={{ type: 'generic', title: "Supprimer le profil", message: "Voulez-vous vraiment supprimer ce profil ?" }}
+          onConfirm={executeDelete}
+        />
+      )}
     </div>
   );
 };

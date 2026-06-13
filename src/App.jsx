@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
 import MainArea from './components/MainArea';
@@ -6,20 +6,24 @@ import ArtifactsPanel from './components/ArtifactsPanel';
 import OnboardingScreen from './components/OnboardingScreen';
 import ConfirmModal from './components/ConfirmModal';
 import SettingsModal from './components/SettingsModal';
+import { useAppStore } from './store/useAppStore';
 
 function App() {
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [conversations, setConversations] = useState([]);
-  const [activeConvId, setActiveConvId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [confirmData, setConfirmData] = useState(null);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [activeArtifact, setActiveArtifact] = useState(null);
-  const [activePersona, setActivePersona] = useState('default');
-  const [showSettings, setShowSettings] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  const { 
+    config, setConfig, 
+    loading, setLoading, 
+    conversations, 
+    activeConvId, setActiveConvId, 
+    messages, setMessages, 
+    systemPrompt, setSystemPrompt, 
+    confirmData, setConfirmData, 
+    showSidebar, setShowSidebar, 
+    activeArtifact, setActiveArtifact, 
+    activePersona, setActivePersona, 
+    showSettings, setShowSettings, 
+    focusMode, setFocusMode,
+    loadConversations, refreshConversations
+  } = useAppStore();
 
   // Écouter les demandes de confirmation de tools
   useEffect(() => {
@@ -48,21 +52,15 @@ function App() {
     });
   }, []);
 
-  // Charger les conversations
-  const refreshConversations = useCallback(async () => {
-    const list = await window.electronAPI.listConversations();
-    setConversations(list);
-  }, []);
-
   useEffect(() => {
     if (config) {
-      refreshConversations();
+      loadConversations(0);
     }
-  }, [config, refreshConversations]);
+  }, [config, loadConversations]);
 
   // Nouvelle conversation
   const startNewConversation = useCallback(() => {
-    setActiveConvId(Date.now());
+    setActiveConvId(null);
     setMessages([]);
     setSystemPrompt('');
   }, []);
@@ -155,25 +153,13 @@ function App() {
             />
           </div>
         )}
-        
         <MainArea 
-          activeConvId={activeConvId}
-          setActiveConvId={setActiveConvId}
-          conversations={conversations}
-          messages={messages}
-          setMessages={setMessages}
-          systemPrompt={systemPrompt}
-          setSystemPrompt={setSystemPrompt}
           onConversationUpdated={refreshConversations}
-          startNewConversation={startNewConversation}
+          onNewConversation={startNewConversation}
           onSelectConversation={selectConversation}
-          showSidebar={showSidebar}
           onToggleSidebar={() => setShowSidebar(true)}
-          setActiveArtifact={setActiveArtifact}
-          activePersona={activePersona}
           onPersonaChange={handlePersonaChange}
-          focusMode={focusMode}
-          setFocusMode={setFocusMode}
+          userProfile={config}
         />
 
         {/* Panneau Artifacts (3ème colonne) */}
@@ -181,10 +167,8 @@ function App() {
           className={`h-full transition-all duration-300 ease-in-out border-l border-border-subtle overflow-hidden ${activeArtifact ? 'w-[500px]' : 'w-0'}`}
         >
           <div className="w-[500px] h-full">
-            <ArtifactsPanel 
-              artifact={activeArtifact} 
-              onClose={() => setActiveArtifact(null)} 
-            />
+            <ArtifactsPanel />
+
           </div>
         </div>
       </div>

@@ -4,8 +4,13 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Check, Copy, Monitor, RotateCcw } from 'lucide-react';
+import { Card, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useAppStore } from '../store/useAppStore';
 
-const CodeBlock = ({ node, inline, className, children, setActiveArtifact, ...props }) => {
+const CodeBlock = ({ node, inline, className, children, ...props }) => {
+  const { setActiveArtifact } = useAppStore();
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -34,32 +39,36 @@ const CodeBlock = ({ node, inline, className, children, setActiveArtifact, ...pr
   }
 
   return (
-    <div className="relative group my-4 rounded-xl overflow-hidden border border-border-subtle shadow-lg">
-      <div className="flex items-center justify-between px-4 py-2 bg-sidebar-bg border-b border-border-subtle">
+    <Card className="relative group my-4 rounded-xl overflow-hidden border-border-subtle shadow-lg bg-transparent">
+      <CardHeader className="flex flex-row items-center justify-between px-4 py-2 bg-sidebar-bg border-b border-border-subtle space-y-0">
         <span className="text-[10px] font-mono text-txt-secondary uppercase tracking-wider">
           {language || 'text'}
         </span>
         <div className="flex items-center gap-2">
           {['html', 'svg', 'react', 'javascript', 'css', 'python'].includes(language) && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleOpenArtifact}
-              className="flex items-center gap-1.5 text-txt-secondary hover:text-accent transition-colors cursor-pointer p-1 rounded-md hover:bg-item-hover"
+              className="h-7 gap-1.5 text-txt-secondary hover:text-accent transition-colors p-1"
               title="Ouvrir dans le panneau latéral"
             >
               <Monitor size={14} />
               <span className="text-[10px] font-medium">Aperçu</span>
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 text-txt-secondary hover:text-txt-primary transition-colors cursor-pointer p-1 rounded-md hover:bg-item-hover"
+            className="h-7 gap-1.5 text-txt-secondary hover:text-txt-primary transition-colors p-1"
             title="Copier le code"
           >
             {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
             <span className="text-[10px] font-medium">{copied ? 'Copié !' : 'Copier'}</span>
-          </button>
+          </Button>
         </div>
-      </div>
+      </CardHeader>
       <SyntaxHighlighter
         style={vscDarkPlus}
         language={language}
@@ -69,7 +78,7 @@ const CodeBlock = ({ node, inline, className, children, setActiveArtifact, ...pr
       >
         {content}
       </SyntaxHighlighter>
-    </div>
+    </Card>
   );
 };
 
@@ -131,16 +140,36 @@ const markdownComponents = (setActiveArtifact) => ({
 
   hr: () => <hr className="my-5 border-border-subtle" />,
 
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-accent underline underline-offset-2 hover:opacity-80 transition-opacity"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    if (href?.startsWith('#tool-')) {
+      const num = href.replace('#tool-', '');
+      return (
+        <sup className="mx-0.5">
+          <a 
+            href={href} 
+            className="text-accent hover:underline font-bold text-[10px]"
+            onClick={(e) => {
+              e.preventDefault();
+              const el = document.getElementById(`tool-call-${num}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+          >
+            {children}
+          </a>
+        </sup>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-accent underline underline-offset-2 hover:opacity-80 transition-opacity"
+      >
+        {children}
+      </a>
+    );
+  },
 
   // ─── Table ────────────────────────────────────────────────────────────────
   table: ({ children }) => (
@@ -178,7 +207,8 @@ const markdownComponents = (setActiveArtifact) => ({
 });
 
 // ─── ChatMessage ──────────────────────────────────────────────────────────────
-const ChatMessage = ({ role, content, isError, isStreaming, setActiveArtifact, onRegenerate, onEdit }) => {
+const ChatMessage = ({ role, content, isError, isStreaming, onRegenerate, onEdit }) => {
+  const { setActiveArtifact } = useAppStore();
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
   const [isEditing, setIsEditing] = useState(false);
@@ -205,53 +235,48 @@ const ChatMessage = ({ role, content, isError, isStreaming, setActiveArtifact, o
   };
 
   // ─── Citations [^n] ────────────────────────────────────────────────────────
-  const renderCitations = (text) => {
-    if (!text) return text;
-    // Remplace [^n] par un lien stylisé
-    const parts = text.split(/(\[\^\d+\])/g);
-    return parts.map((part, index) => {
-      const match = part.match(/\[\^(\d+)\]/);
-      if (match) {
-        const num = match[1];
-        return (
-          <sup key={index} className="mx-0.5">
-            <a 
-              href={`#tool-${num}`} 
-              className="text-accent hover:underline font-bold text-[10px]"
-              onClick={(e) => {
-                e.preventDefault();
-                const el = document.getElementById(`tool-call-${num}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }}
-            >
-              [{num}]
-            </a>
-          </sup>
-        );
-      }
-      return part;
-    });
-  };
+  const MarkdownRenderer = React.memo(({ text }) => {
+    const components = React.useMemo(() => markdownComponents(setActiveArtifact), [setActiveArtifact]);
+    
+    // Remplacer [^n] par un lien markdown standard pour qu'il soit parsé par le composant 'a'
+    const processedText = text ? text.replace(/\[\^(\d+)\]/g, '[[$$1]](#tool-$$1)') : '';
 
-  const MarkdownRenderer = ({ text }) => {
-    // Pré-traitement pour transformer [^n] en quelque chose que ReactMarkdown peut laisser tranquille ou traiter
-    // Mais le plus simple pour le scroll interactif est de passer par les composants ReactMarkdown
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        components={{
-          ...markdownComponents(setActiveArtifact),
-          text: ({ value }) => renderCitations(value)
-        }}
+        components={components}
       >
-        {text}
+        {processedText}
       </ReactMarkdown>
     );
-  };
+  });
 
   const renderContent = () => {
     if (isEditing) {
-      // ... (code existant)
+      return (
+        <div className="w-full flex flex-col gap-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full bg-input-bg border border-border-input rounded-lg p-3 text-sm text-txt-primary outline-none focus:border-accent min-h-[100px] resize-y custom-scrollbar"
+            placeholder="Modifiez votre message..."
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1.5 text-[11px] font-medium text-txt-secondary hover:text-txt-primary hover:bg-item-hover rounded-md transition-colors cursor-pointer"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleEdit}
+              className="px-3 py-1.5 text-[11px] font-medium bg-accent text-white hover:bg-accent-hover rounded-md transition-colors shadow-sm cursor-pointer"
+            >
+              Enregistrer & Renvoyer
+            </button>
+          </div>
+        </div>
+      );
     }
 
     // Garde-fou robuste

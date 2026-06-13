@@ -4,8 +4,19 @@ import ChatMessage from './ChatMessage';
 import InputZone from './InputZone';
 import ToolCallBlock from './ToolCallBlock';
 import WelcomeDashboard from './WelcomeDashboard';
+import { useAppStore } from '../store/useAppStore';
+const MainArea = ({ onConversationUpdated, onNewConversation, onSelectConversation, onToggleSidebar, onPersonaChange, userProfile }) => {
+  const { 
+    activeConvId, setActiveConvId, 
+    conversations, 
+    messages, setMessages, 
+    systemPrompt, setSystemPrompt, 
+    showSidebar, setShowSidebar,
+    setActiveArtifact, 
+    activePersona, setActivePersona, 
+    focusMode, setFocusMode 
+  } = useAppStore();
 
-const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setMessages, systemPrompt, setSystemPrompt, onConversationUpdated, startNewConversation, onSelectConversation, showSidebar, onToggleSidebar, setActiveArtifact, activePersona, onPersonaChange, focusMode, setFocusMode }) => {
   const [streaming, setStreaming] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   const [activeToolCalls, setActiveToolCalls] = useState([]);
@@ -33,7 +44,7 @@ const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setM
     if (!showScrollBottom) {
       scrollToBottom();
     }
-  }, [messages, currentResponse, activeToolCalls]);
+  }, [messages, currentResponse, activeToolCalls, showScrollBottom]);
 
   // Détection du scroll
   const handleScroll = () => {
@@ -151,17 +162,27 @@ const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setM
     setActiveToolCalls([]);
   };
 
+  const handleChunkRef = useRef();
+  const handleEndRef = useRef();
+  const handleErrorRef = useRef();
+
   useEffect(() => {
-    const wrappedChunk = window.electronAPI.onStreamChunk(handleChunk);
-    const wrappedEnd = window.electronAPI.onStreamEnd(handleEnd);
-    const wrappedError = window.electronAPI.onStreamError(handleError);
+    handleChunkRef.current = handleChunk;
+    handleEndRef.current = handleEnd;
+    handleErrorRef.current = handleError;
+  });
+
+  useEffect(() => {
+    const wrappedChunk = window.electronAPI.onStreamChunk((c) => handleChunkRef.current(c));
+    const wrappedEnd = window.electronAPI.onStreamEnd((r, m) => handleEndRef.current(r, m));
+    const wrappedError = window.electronAPI.onStreamError((e) => handleErrorRef.current(e));
 
     return () => {
       window.electronAPI.offStreamChunk(wrappedChunk);
       window.electronAPI.offStreamEnd(wrappedEnd);
       window.electronAPI.offStreamError(wrappedError);
     };
-  }, [activeConvId, setMessages, onConversationUpdated, setActiveConvId]);
+  }, []);
 
   // Écouter les événements des tools système (F3)
   useEffect(() => {
@@ -381,9 +402,14 @@ const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setM
         {messages.length === 0 ? (
           <WelcomeDashboard 
             onSend={handleSendMessage} 
-            startNewConversation={startNewConversation}
+            startNewConversation={onNewConversation}
             conversations={conversations}
             onSelect={onSelectConversation}
+            userProfile={userProfile}
+            streaming={streaming}
+            disabled={streaming}
+            activePersona={activePersona}
+            onPersonaChange={onPersonaChange}
           />
         ) : (
           <div className={`mx-auto w-full transition-all duration-500 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
@@ -480,20 +506,22 @@ const MainArea = ({ activeConvId, setActiveConvId, conversations, messages, setM
       </div>
 
       {/* Zone de saisie (fixe en bas) */}
-      <div className="p-6 bg-gradient-to-t from-main-bg via-main-bg to-transparent">
-        <div className={`mx-auto transition-all duration-500 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
-          <InputZone 
-            onSend={handleSendMessage} 
-            streaming={streaming} 
-            disabled={streaming} 
-            activePersona={activePersona}
-            onPersonaChange={onPersonaChange}
-          />
-          <p className="text-[10px] text-txt-secondary text-center mt-3">
-            ARIA peut faire des erreurs. Vérifiez les informations importantes.
-          </p>
+      {messages.length > 0 && (
+        <div className="p-6 bg-gradient-to-t from-main-bg via-main-bg to-transparent">
+          <div className={`mx-auto transition-all duration-500 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+            <InputZone 
+              onSend={handleSendMessage} 
+              streaming={streaming} 
+              disabled={streaming} 
+              activePersona={activePersona}
+              onPersonaChange={onPersonaChange}
+            />
+            <p className="text-[10px] text-txt-secondary text-center mt-3">
+              ARIA peut faire des erreurs. Vérifiez les informations importantes.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 };

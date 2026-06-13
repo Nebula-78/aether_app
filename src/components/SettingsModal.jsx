@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserCircle, Wrench, Palette, Keyboard, Trash2, Plus, Check, Save, Search, Loader2 } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
-const SettingsModal = ({ onClose }) => {
+const SettingsModal = () => {
+  const { setShowSettings } = useAppStore();
+  const onClose = () => setShowSettings(false);
   const [activeTab, setActiveTab] = useState('profils');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [profiles, setProfiles] = useState({});
   const [fontScale, setFontScale] = useState(1);
   const [systemPrompt, setSystemPrompt] = useState(''); 
@@ -15,6 +26,7 @@ const SettingsModal = ({ onClose }) => {
     model: 'gpt-4o'
   });
   const [testStatus, setTestStatus] = useState('idle'); // idle, testing, success, error
+  const [modalData, setModalData] = useState(null);
 
   useEffect(() => {
     refreshProfiles();
@@ -30,11 +42,16 @@ const SettingsModal = ({ onClose }) => {
     window.electronAPI.listProfiles().then(setProfiles);
   };
 
-  const handleDelete = async (id) => {
-    if (confirm("Supprimer ce profil ?")) {
-      await window.electronAPI.deleteProfile(id);
-      refreshProfiles();
-    }
+  const handleDelete = (id) => {
+    setModalData({
+      type: 'generic',
+      title: 'Supprimer le profil',
+      message: 'Voulez-vous vraiment supprimer ce profil ?',
+      action: async () => {
+        await window.electronAPI.deleteProfile(id);
+        refreshProfiles();
+      }
+    });
   };
 
   const handleTestProfile = async () => {
@@ -46,7 +63,10 @@ const SettingsModal = ({ onClose }) => {
 
   const handleSaveProfile = async () => {
     const profile = { ...newProfile, id: Date.now().toString() };
-    const result = await window.electronAPI.saveConfig(profile);
+    const currentConfig = await window.electronAPI.loadConfig();
+    const newProfiles = { ...(currentConfig.profiles || {}) };
+    newProfiles[profile.id] = profile;
+    const result = await window.electronAPI.saveConfig({ ...currentConfig, profiles: newProfiles, activeProfileId: profile.id });
     if (result.success) {
       setShowAddForm(false);
       setNewProfile({ name: '', baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o' });
@@ -63,13 +83,13 @@ const SettingsModal = ({ onClose }) => {
   const handleSaveSystemPrompt = async () => {
     const currentConfig = await window.electronAPI.loadConfig();
     await window.electronAPI.saveConfig({ ...currentConfig, defaultSystemPrompt: systemPrompt });
-    alert("Prompt système par défaut sauvegardé !");
+    setModalData({ type: 'generic', isAlert: true, title: 'Succès', message: 'Prompt système par défaut sauvegardé !', action: () => {} });
   };
 
   const handleSaveTavilyKey = async () => {
     const currentConfig = await window.electronAPI.loadConfig();
     await window.electronAPI.saveConfig({ ...currentConfig, tavilyApiKey: tavilyKey });
-    alert("Clé Tavily sauvegardée !");
+    setModalData({ type: 'generic', isAlert: true, title: 'Succès', message: 'Clé Tavily sauvegardée !', action: () => {} });
   };
 
   const tabs = [
@@ -80,7 +100,13 @@ const SettingsModal = ({ onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-[fadeSlideIn_0.2s_ease_both]">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-[fadeSlideIn_0.2s_ease_both]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+    >
+      <h2 id="settings-title" className="sr-only">Paramètres</h2>
       <div className="bg-main-bg border border-border-subtle rounded-2xl shadow-2xl w-full max-w-2xl h-[550px] flex overflow-hidden">
         {/* Sidebar */}
         <div className="w-48 bg-sidebar-bg border-r border-border-subtle p-4 flex flex-col gap-2">
@@ -233,6 +259,15 @@ const SettingsModal = ({ onClose }) => {
           </div>
         </div>
       </div>
+      {modalData && (
+        <ConfirmModal
+          data={modalData}
+          onConfirm={(confirmed) => {
+            if (confirmed) modalData.action();
+            setModalData(null);
+          }}
+        />
+      )}
     </div>
   );
 };

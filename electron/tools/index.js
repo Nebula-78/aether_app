@@ -30,6 +30,14 @@ function getSafePath(filePath) {
     resolved = path.join(homeDir, filePath);
   }
   
+  try {
+    if (fsSync.existsSync(resolved)) {
+      resolved = fsSync.realpathSync(resolved);
+    }
+  } catch (e) {
+    // Fichier inexistant, on continue avec resolved
+  }
+  
   // Autoriser le dossier personnel ET le Bureau
   if (!resolved.startsWith(homeDir) && !resolved.startsWith(desktopDir)) {
     throw new Error("Accès refusé : Le chemin doit être dans votre dossier personnel ou sur le Bureau.");
@@ -108,7 +116,7 @@ async function executeTool(name, args, win, askConfirmationCallback) {
         const confirmed = await askConfirmationCallback({ name, command }, win);
         if (!confirmed) return { error: "Action annulée par l'utilisateur." };
         return new Promise((resolve) => {
-          exec(command, { cwd: os.homedir() }, (error, stdout, stderr) => {
+          exec(command, { cwd: os.homedir(), timeout: 30000, maxBuffer: 5 * 1024 * 1024 }, (error, stdout, stderr) => {
             resolve({ stdout: stdout || '', stderr: stderr || '', exitCode: error ? error.code : 0 });
           });
         });

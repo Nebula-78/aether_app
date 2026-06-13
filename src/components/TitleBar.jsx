@@ -5,10 +5,6 @@ const TitleBar = ({ focusMode }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const platform = window.electronAPI?.platform || 'darwin';
 
-  if (focusMode) {
-    return <div className="w-full flex bg-main-bg" style={{ height: '8px', WebkitAppRegion: 'drag' }} />;
-  }
-
   useEffect(() => {
     const checkMaximized = async () => {
       const maximized = await window.electronAPI?.isMaximized();
@@ -16,6 +12,10 @@ const TitleBar = ({ focusMode }) => {
     };
     checkMaximized();
   }, []);
+
+  if (focusMode) {
+    return <div className="w-full flex bg-main-bg" style={{ height: '8px', WebkitAppRegion: 'drag' }} />;
+  }
 
   const handleMinimize = () => window.electronAPI?.minimize();
   const handleMaximize = async () => {
